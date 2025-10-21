@@ -15,7 +15,7 @@ interface IProjectVault {
      * @notice Mengembalikan daftar semua ketentuan lisensi (harga/tipe) yang ditawarkan kreator untuk hash karya tertentu.
      * @param _workHash Hash karya (GOT).
      */
-    function listingTerms(bytes32 _workHash) external view returns (LicenseTerm[] memory);
+    function getListingTerms(bytes32 _workHash) external view returns (LicenseTerm[] memory);
 
     /**
      * @notice Mengembalikan status verifikasi karya.

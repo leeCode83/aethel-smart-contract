@@ -55,7 +55,7 @@ contract ProjectVault is Ownable, ReentrancyGuard {
         string licenseTypeURI;
         uint256 cltId;
     }
-    mapping(bytes32 => LicenseTerm[]) public listingTerms;
+    mapping(bytes32 => LicenseTerm[]) internal listingTerms;
 
     event StampStatusUpdated(bytes32 indexed workHash, StampStatus newStatus);
     event ListingUpdated(bytes32 indexed workHash);
@@ -123,24 +123,21 @@ contract ProjectVault is Ownable, ReentrancyGuard {
         if (workRegistry[_workHash].status != StampStatus.NONE)
             revert WorkAlreadyProcessed();
 
-        // PERBAIKAN: Menggunakan stablecoinContract.transferFrom()
-        if (
-            !stablecoinContract.transferFrom(
-                msg.sender,
-                address(this),
-                _stakeAmount
-            )
-        ) {
-            revert TransferFailed();
-        }
-
+        // EFFECTS: Ubah state internal terlebih dahulu
         workRegistry[_workHash] = Work({
             status: StampStatus.CURATION_PENDING,
             gotURI: _gotURI,
             creatorStake: _stakeAmount
         });
-
         emit StampStatusUpdated(_workHash, StampStatus.CURATION_PENDING);
+
+        // INTERACTIONS: Lakukan transfer setelah state diubah
+        // Menggunakan safeTransferFrom akan lebih baik, namun if check juga aman.
+        stablecoinContract.safeTransferFrom(
+            msg.sender,
+            address(this),
+            _stakeAmount
+        );
     }
 
     // Dipanggil oleh Oracle Kurator
@@ -233,6 +230,16 @@ contract ProjectVault is Ownable, ReentrancyGuard {
     }
 
     // --- FUNGSI READ (Untuk Marketplace/UI) ---
+
+    /**
+     * @notice Mengembalikan daftar semua ketentuan lisensi untuk sebuah karya.
+     * @dev Secara eksplisit mengimplementasikan getter untuk mapping `listingTerms`.
+     */
+    function getListingTerms(
+        bytes32 _workHash
+    ) external view returns (LicenseTerm[] memory) {
+        return listingTerms[_workHash];
+    }
 
     function getWorkStatus(
         bytes32 _workHash

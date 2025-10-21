@@ -67,7 +67,7 @@ contract AethelMarketplace is Ownable, ReentrancyGuard {
 
         // MENGAMBIL DATA LISENSI
         // Gunakan tipe struct dari interface IProjectVault secara eksplisit
-        LicenseTerm[] memory terms = vault.listingTerms(_workHash);
+        LicenseTerm[] memory terms = vault.getListingTerms(_workHash);
 
         // VERIFIKASI INDEX DAN LISENSI
         if (_termIndex >= terms.length) revert InvalidTermIndex();
