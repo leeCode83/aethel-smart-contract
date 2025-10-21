@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interface/IProjectAssets.sol"; // Interface Lapisan 4
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IProjectAssets} from "../interface/IProjectAssets.sol"; // Interface Lapisan 4
+import {ProjectAssets} from "./ProjectAssets.sol";
 
 // --- Custom Errors ---
 error AccessDenied();
@@ -18,13 +19,12 @@ error InvalidIndex();
 error InvalidLicenseID(); // Ditambahkan dari IProjectAssets
 
 contract ProjectVault is Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
     // --- KONFIGURASI IMMUTABLE (Di-assign di Constructor) ---
     address public immutable CREATOR;
     address public immutable FACTORY_ADDRESS;
 
     // --- INTERFACE INSTANCES (Dibuat di Constructor) ---
-    IProjectAssets public immutable assetsContract;
+    IProjectAssets public assetsContract;
     IERC20 public immutable stablecoinContract;
 
     // --- PERAN KHUSUS ---
@@ -64,21 +64,17 @@ contract ProjectVault is Ownable, ReentrancyGuard {
     constructor(
         address _creator,
         address _factoryAddress,
-        address _stablecoinAddress,
-        address _assetsContractAddress
+        address _stablecoinAddress
     ) Ownable(_creator) {
         // Assign Immutables
         CREATOR = _creator;
         FACTORY_ADDRESS = _factoryAddress;
-
-        // Inisialisasi Interface
-        if (
-            _assetsContractAddress == address(0) ||
-            _stablecoinAddress == address(0)
-        ) revert InvalidAddress();
-        assetsContract = IProjectAssets(_assetsContractAddress);
-        // PERBAIKAN: Inisialisasi IERC20
         stablecoinContract = IERC20(_stablecoinAddress);
+    }
+
+    modifier onlyFactory() {
+        if (msg.sender != FACTORY_ADDRESS) revert AccessDenied();
+        _;
     }
 
     // --- FUNGSI PENGATURAN ---
@@ -91,6 +87,29 @@ contract ProjectVault is Ownable, ReentrancyGuard {
 
     function setCuratorOracle(address _oracleAddress) external onlyOwner {
         curatorOracle = _oracleAddress;
+    }
+
+    /**
+     * @notice Melakukan deployment ProjectAssets dan menyetelnya sebagai kontrak aset.
+     * @dev Fungsi ini HANYA dipanggil oleh AethelFactory satu kali.
+     * @param _contractURI URI metadata dasar untuk kontrak aset.
+     */
+    function initializeAssets(
+        string memory _contractURI
+    ) external onlyFactory nonReentrant {
+        // Keamanan: Memastikan aset belum pernah dideploy
+        require(
+            address(assetsContract) == address(0),
+            "Assets already deployed"
+        );
+
+        // DEPLOYMENT: ProjectVault mendeploy asetnya sendiri.
+        // address(this) otomatis menjadi ProjectVault, yang akan menjadi Owner.
+        ProjectAssets newProject = new ProjectAssets(
+            address(this),
+            _contractURI
+        );
+        assetsContract = IProjectAssets(address(newProject));
     }
 
     // --- FUNGSI UTAMA 1: PROVENANCE (MINT GOT) ---
