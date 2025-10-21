@@ -260,8 +260,6 @@ contract ProjectVault is Ownable, ReentrancyGuard {
         uint256 amount
     ) external onlyOwner nonReentrant {
         // Menggunakan stablecoinContract.transfer()
-        if (!stablecoinContract.transfer(msg.sender, amount)) {
-            revert TransferFailed();
-        }
+        stablecoinContract.safeTransfer(msg.sender, amount);
     }
 }
