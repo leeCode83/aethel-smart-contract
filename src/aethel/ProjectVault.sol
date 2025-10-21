@@ -19,6 +19,7 @@ error InvalidIndex();
 error InvalidLicenseID(); // Ditambahkan dari IProjectAssets
 
 contract ProjectVault is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20; // Menggunakan SafeERC20 untuk keamanan transfer
     // --- KONFIGURASI IMMUTABLE (Di-assign di Constructor) ---
     address public immutable CREATOR;
     address public immutable FACTORY_ADDRESS;
@@ -163,9 +164,7 @@ contract ProjectVault is Ownable, ReentrancyGuard {
             uint256 stake = work.creatorStake;
             work.creatorStake = 0;
             // PERBAIKAN: Menggunakan stablecoinContract.transfer()
-            if (!stablecoinContract.transfer(CREATOR, stake)) {
-                // Biarkan dana di Vault untuk ditarik owner (kreator) jika transfer gagal
-            }
+            stablecoinContract.safeTransfer(CREATOR, stake);
 
             work.status = StampStatus.MINTED;
         } else {

@@ -85,18 +85,21 @@ contract ProjectAssets is ERC1155URIStorage, Ownable, ReentrancyGuard {
         uint256[] memory ids,
         uint256[] memory values
     ) internal virtual override {
-        // Hanya memproses jika terjadi transfer antar alamat (bukan minting/burning)
-        if (from == address(0) || to == address(0) || from == to)
-            revert InvalidAddress();
-
-        for (uint i = 0; i < ids.length; i++) {
-            // Logika: Jika ID > GOT_ID (yaitu CLT, ID 1 hingga 6)
-            if (ids[i] > GOT_ID) {
-                // Kita blokir transfer CLT antar user.
-                if (values[i] > 0) revert TransferNotAllowed();
+        // Hanya proses jika INI BUKAN mint, burn, atau self-transfer
+        if (from != address(0) && to != address(0) && from != to) {
+            for (uint i = 0; i < ids.length; i++) {
+                // Logika: Jika ID > GOT_ID (yaitu CLT, ID 1 hingga 6)
+                if (ids[i] > GOT_ID) {
+                    // Kita blokir transfer CLT antar user.
+                    if (values[i] > 0) revert TransferNotAllowed();
+                }
             }
+        } else if (from == address(0) && to == address(0)) {
+            // Mencegah minting ke address(0) yang tidak valid
+            revert InvalidAddress();
         }
 
+        // Lanjutkan dengan mint/burn/transfer yang valid
         super._update(from, to, ids, values);
     }
 }
